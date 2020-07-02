@@ -1,7 +1,6 @@
 # -*-coding:utf-8
 '''
 @time: 2018/11/22 
-@version:2.0
 ========================
 cifar10数据集
 官网：https://www.cs.toronto.edu/~kriz/cifar.html
@@ -14,7 +13,7 @@ cifar10数据集
 '''
 2019/3/31修改部分代码  论文数据
 '''
-import mysql.connector
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -27,38 +26,35 @@ from torch.autograd import Variable
 import pickle
 from torchsummary import summary
 import time
-from torchviz import make_dot, make_dot_from_trace
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# print(device)
+print('the type of device:',device)
 
 
 
 #hyper parameters
-EPOCH = 10                   
+EPOCH = 1                   
 BATCH = 10                   
 LR = 0.001                                          #learning rate
 
-# def unpickle(fileName):
-#     with open(fileName,'rb') as fo:
-#         data_dict = pickle.load(fo,encoding='bytes')
-#     return data_dict
-
-
-# #open file and return a dictionary
-# path = r'data\cifar-10-batches-py\batches.meta'
-# data_dict = unpickle(path)
-# classes = data_dict[b'label_names']                 #a dictionary stores class name
 
 
 #0~255 to 0~1.0       0~1 to -1~1      (image-mean)/std
 transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=False, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH,shuffle=True, num_workers=1)
+if(os.path.exists('./data')):
+  trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=False, transform=transform)
+  trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH,shuffle=True, num_workers=1)
 
-testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=False, transform=transform)
-testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH,shuffle=False, num_workers=2)
+  testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=False, transform=transform)
+  testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH,shuffle=False, num_workers=2)
+else:
+  trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transform)
+  trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH,shuffle=True, num_workers=1)
+
+  testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=True, transform=transform)
+  testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH,shuffle=False, num_workers=2)
+
 
 class CNN(nn.Module):
     def __init__(self):
@@ -126,24 +122,16 @@ class CNN(nn.Module):
 
 def train(optimizer,loss_function,cnn):
 
-    print("start train <50000 samples> >>>")
+    print("START TRAIN <50,000 samples>...")
     for epoch in range(EPOCH):
         time_start = time.time()
         running_loss = 0
 
-        #定义列表存储均值和标准差
-        cnn_mean_var = []
-
         for step, data in enumerate(trainloader,1):#index from 1
 
             inputs, labels = data
-            # inputs= Variable(inputs)                #moder input
-            # labels = Variable(labels)               #image real labels
-            inputs, labels = inputs.to(device), labels.to(device)
-            # inputs = inputs.cuda()                  #use gpu to compute
-            # labels = labels.cuda()
-
-            
+           
+            inputs, labels = inputs.to(device), labels.to(device)#use gpu 
 
             optimizer.zero_grad()                   #clear gradients for this training step
             # print(inputs.shape)
@@ -163,76 +151,10 @@ def train(optimizer,loss_function,cnn):
                 time_start = time.time()
 
 
-        print('start compute gradient')   
-        #打印参数
-        for index,f in enumerate(cnn.parameters()):
-            if index==0:
-                temp= {}
-                temp['type'] = 'conv1'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index ==4:
-                temp= {}
-                temp['type'] = 'conv2'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index ==8:
-                temp= {}
-                temp['type'] = 'conv3'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index ==12:
-                temp= {}
-                temp['type'] = 'conv4'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index ==16:
-                temp= {}
-                temp['type'] = 'conv5'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index == 20:
-                temp= {}
-                temp['type'] = 'conv6'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index==24:
-                temp= {}
-                temp['type'] = 'fc1'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index == 26:
-                temp= {}
-                temp['type'] = 'fc2'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-            elif index == 28:
-                temp= {}
-                temp['type'] = 'fc3'
-                temp['mean'] = abs(float(torch.mean(f.grad)))
-                temp['var'] = float(torch.var(f.grad))
-                cnn_mean_var.append(temp)
-
-            for x in cnn_mean_var:
-                save_to_db(epoch,x)
-
-
-
-    
-
-
-    print("Finished train! >>>")
+    print("FINISHED!!!")
 
 def test(cnn):
-    print("start test <10000 samples> <<<")
+    print("START TEST <10,000 samples>...")
     correct = 0
     total = 0
     time_start = time.time()
@@ -240,8 +162,7 @@ def test(cnn):
         for data in testloader:
             images, labels = data
             images, labels = images.to(device), labels.to(device)
-            # images = images.cuda()
-            # labels = labels.cuda()
+
 
             outputs = cnn(images)
 
@@ -264,8 +185,8 @@ def Myimshow(img):
     plt.show()
 
 
-def plot_filter1(cnn):
-    print("start plot the first filters")
+def plot_filter1(cnn):#打印第一层filter
+    print("PLOT THE FIRST FILTER")
     cnn.cpu()
     weight = cnn.conv1[0].weight.data.numpy()
     weight = weight - np.min(weight)                    # data to >0
@@ -277,7 +198,8 @@ def plot_filter1(cnn):
         plt.imshow(filt)                                #(adx,adx,channel)
     plt.show()    
 
-def plot_filter2(cnn):
+def plot_filter2(cnn):#打印第二层filter
+    print('PLOT SECOND FILTER')
     cnn.cpu()
     weight = cnn.conv6[0].weight.data.numpy()
     plt.figure()
@@ -310,64 +232,52 @@ def printmodel(cnn):
         dot.view()
         break
 
-#保存参数到数据库
-def save_to_db(epoch,x):
-    conn = mysql.connector.connect(user='admin', password='123456',host='47.102.143.204',port='3306', database='test')
-    cursor = conn.cursor()
-    try:
-        cursor.execute('insert into cnn(epoch,layer,std,mean)'
-                    'values(%s, %s, %s, %s)',(epoch,x['type'],x['var'],x['mean']))
-    except Exception as e:
-        print(e)
-    conn.commit()
-    cursor.close()
-    conn.close()
         
 if __name__=='__main__':
     
-    loss_list = []                                  #save loss every 1000 step in a list   
-    Acc = []                                        #save accuracy every 1000 step in a list    
-    cnn =CNN()
-    # cnn.cuda()
-    cnn.to(device)
-    optimizer = optim.Adam(cnn.parameters(), lr=LR)#update params based on the gradient
-    loss_function = nn.CrossEntropyLoss()          #loss function 
+    if os.path.exists('cnn.pkl'):
+      cnn = torch.load('cnn.pkl')
+      print('LOAD cnn.pkl')
+      cnn.to(device)
+    else:
+      loss_list = []                                  #save loss every 1000 step in a list   
+      Acc = []                                        #save accuracy every 1000 step in a list    
+      cnn =CNN()
+      
+      cnn.to(device)
+      optimizer = optim.Adam(cnn.parameters(), lr=LR)#update params based on the gradient
+      loss_function = nn.CrossEntropyLoss()          #loss function 
 
-    #train the net model
-    # time_start_head = time.time()
-    # train(optimizer,loss_function,cnn)
-    # time_end_head = time.time()
-    # print("total train time cost:%.2f"%(time_end_head-time_start_head))
-    print('save model params to cnn.pkl')
-    torch.save(cnn.state_dict(), 'cnn.pkl')
-    # test the net model
-    # time_start_head = time.time()
-    # test(cnn)
-    # time_end_head = time.time()
-    # print("total test time cost:%.2f"%(time_end_head-time_start_head))
-
-
-
-    # #output each layer's size
-    # summary(cnn,(3,32,32))
+      #train the net model
+      time_start_head = time.time()
+      train(optimizer,loss_function,cnn)
+      time_end_head = time.time()
+      print("TOTAL TRAIN TIME :%.2f"%(time_end_head-time_start_head))
+      torch.save(cnn, 'cnn.pkl')
+      print('SAVE MODEL PARAMS TO cnn.pkl')
 
 
-    #print some of the images from <trainset>
-    # dataiter = iter(trainloader)
-    # images,labels = dataiter.next()                 #get the first batch data(image,label)
-    # print(' '.join('%5s'%classes[labels[j]] for j in range(BATCH)))
-    # Myimshow(torchvision.utils.make_grid(images))   #function:(B,C,H,W) ->B*(C,H,W)
+      # test the net model
+      time_start_head = time.time()
+      test(cnn)
+      time_end_head = time.time()
+      print("TOTAL TEST TIME:%.2f"%(time_end_head-time_start_head))
+
+      #print curve
+      pltline(loss_list,Acc)
+
+      #output each layer's size
+      summary(cnn,(3,32,32))
 
 
-    # # torch.save(cnn, 'cnn.pkl')
-    # cnn2 = torch.load('./data/cnn.pkl')
-    # cnn2.to(device)
-    # # plot_filter1(cnn2)
-    # plot_filter2(cnn2)
-    # # test(cnn2)
+    # print some of the images from <trainset>
+    dataiter = iter(trainloader)
+    images,labels = dataiter.next()                 #get the first batch data(image,label)
+    Myimshow(torchvision.utils.make_grid(images))   #function:(B,C,H,W) ->B*(C,H,W)  Make a grid of images.
 
-    #print curve
-    # pltline(loss_list,Acc)
 
-    #print cnn model 
-    # printmodel(cnn)
+
+    #print the first and second layer filter
+    plot_filter1(cnn)
+    plot_filter2(cnn)
+
